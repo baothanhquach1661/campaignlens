@@ -28,13 +28,20 @@ def home() -> HTMLResponse:
         connect_timeout=3,
     ) as connection:
         clients = connection.execute(
-            "SELECT client_code, client_name FROM public.clients ORDER BY client_id"
+            """
+            SELECT c.client_code, c.client_name, COUNT(a.ad_account_id) AS account_count
+            FROM public.clients AS c
+            LEFT JOIN public.ad_accounts AS a ON a.client_id = c.client_id
+            GROUP BY c.client_id, c.client_code, c.client_name
+            ORDER BY c.client_id
+            """
         ).fetchall()
 
     rows = "\n".join(
         f'<tr><td style="padding:14px 12px;border-bottom:1px solid #eef0f3">{escape(code)}</td>'
-        f'<td style="padding:14px 12px;border-bottom:1px solid #eef0f3">{escape(name)}</td></tr>'
-        for code, name in clients
+        f'<td style="padding:14px 12px;border-bottom:1px solid #eef0f3">{escape(name)}</td>'
+        f'<td style="padding:14px 12px;border-bottom:1px solid #eef0f3">{count}</td></tr>'
+        for code, name, count in clients
     )
 
     return HTMLResponse(f"""<!doctype html>
@@ -67,6 +74,7 @@ def home() -> HTMLResponse:
             <thead><tr>
               <th scope="col" style="padding:12px;border-bottom:1px solid #e5e8ec">Mã khách</th>
               <th scope="col" style="padding:12px;border-bottom:1px solid #e5e8ec">Tên khách hàng</th>
+              <th scope="col" style="padding:12px;border-bottom:1px solid #e5e8ec">Tài khoản quảng cáo</th>
             </tr></thead>
             <tbody>{rows}</tbody>
           </table>
