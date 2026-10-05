@@ -1,0 +1,5 @@
+CREATE TABLE public.clients (
+    client_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    client_code VARCHAR(30) NOT NULL UNIQUE,
+    client_name VARCHAR(120) NOT NULL
+);
