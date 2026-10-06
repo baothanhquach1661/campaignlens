@@ -113,6 +113,19 @@ def show_accounts(client_code: str) -> HTMLResponse:
             (client_code,),
         ).fetchall()
 
+        campaigns = connection.execute(
+            """
+            SELECT a.platform, a.external_account_id,
+                   g.external_campaign_id, g.campaign_name
+            FROM public.campaigns AS g
+            JOIN public.ad_accounts AS a ON a.ad_account_id = g.ad_account_id
+            JOIN public.clients AS c ON c.client_id = a.client_id
+            WHERE c.client_code = %s
+            ORDER BY a.platform, a.external_account_id, g.campaign_name
+            """,
+            (client_code,),
+        ).fetchall()
+
     if not records:
         return HTMLResponse("<h1>Không tìm thấy khách hàng</h1>", status_code=404)
 
@@ -130,6 +143,17 @@ def show_accounts(client_code: str) -> HTMLResponse:
             for platform, external_id in accounts
         )
         or '<tr><td colspan="2" style="padding:14px 12px">Chưa có tài khoản quảng cáo.</td></tr>'
+    )
+
+    campaign_rows = (
+        "\n".join(
+            f'<tr><td style="padding:14px 12px;border-bottom:1px solid #eef0f3">{escape(platform)}</td>'
+            f'<td style="padding:14px 12px;border-bottom:1px solid #eef0f3">{escape(external_account_id)}</td>'
+            f'<td style="padding:14px 12px;border-bottom:1px solid #eef0f3">{escape(external_campaign_id)}</td>'
+            f'<td style="padding:14px 12px;border-bottom:1px solid #eef0f3">{escape(campaign_name)}</td></tr>'
+            for platform, external_account_id, external_campaign_id, campaign_name in campaigns
+        )
+        or '<tr><td colspan="4" style="padding:14px 12px">Chưa có chiến dịch.</td></tr>'
     )
 
     return HTMLResponse(f"""<!doctype html>
@@ -162,6 +186,20 @@ def show_accounts(client_code: str) -> HTMLResponse:
               <th scope="col" style="padding:12px;border-bottom:1px solid #e5e8ec">Mã tài khoản trên nền tảng</th>
             </tr></thead>
             <tbody>{account_rows}</tbody>
+          </table>
+        </div>
+      </section>
+      <section style="max-width:920px;background:white;border:1px solid #e5e8ec;border-radius:12px;padding:24px;margin-top:20px">
+        <h2 style="font-size:18px;margin:0 0 18px">Chiến dịch ({len(campaigns)})</h2>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;text-align:left">
+            <thead><tr>
+              <th scope="col" style="padding:12px;border-bottom:1px solid #e5e8ec">Nền tảng</th>
+              <th scope="col" style="padding:12px;border-bottom:1px solid #e5e8ec">Tài khoản</th>
+              <th scope="col" style="padding:12px;border-bottom:1px solid #e5e8ec">Mã chiến dịch</th>
+              <th scope="col" style="padding:12px;border-bottom:1px solid #e5e8ec">Tên chiến dịch</th>
+            </tr></thead>
+            <tbody>{campaign_rows}</tbody>
           </table>
         </div>
       </section>
