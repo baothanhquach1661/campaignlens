@@ -1,5 +1,6 @@
 import os
 from collections import Counter
+from datetime import date
 from decimal import Decimal
 from html import escape
 from pathlib import Path
@@ -75,6 +76,13 @@ h1 { font-size: 29px; line-height: 1.25; letter-spacing: -.8px; margin: 0 0 8px;
 .action.primary { background: var(--blue); border-color: var(--blue); color: white;
                   box-shadow: 0 3px 8px #315bea20; }
 .action.primary:hover { background: #244bce; }
+.filters { display: flex; align-items: end; flex-wrap: wrap; gap: 14px;
+           padding: 18px 22px; background: var(--surface);
+           border: 1px solid var(--border); border-radius: 12px;
+           margin-bottom: 26px; }
+.filters label { display: grid; gap: 5px; color: var(--muted); font-size: 12px; }
+.filters input { min-height: 40px; padding: 8px 10px; border: 1px solid var(--border);
+                 border-radius: 8px; color: var(--text); font: inherit; }
 .tabs { display: flex; gap: 24px; margin: 0 0 26px; border-bottom: 1px solid var(--border); }
 .tab { display: inline-flex; gap: 8px; align-items: center; padding: 0 0 13px;
        color: var(--muted); border-bottom: 2px solid transparent; font-weight: 550; }
@@ -495,9 +503,30 @@ def show_accounts(client_code: str) -> HTMLResponse:
 
 
 @app.get("/performance", response_class=HTMLResponse)
-def show_performance(client_code: str) -> HTMLResponse:
+def show_performance(
+    client_code: str, start_date: str = "", end_date: str = ""
+) -> HTMLResponse:
     if not os.getenv("CAMPAIGNLENS_DB_PASSWORD"):
         return configuration_error()
+
+    try:
+        start = date.fromisoformat(start_date) if start_date else None
+        end = date.fromisoformat(end_date) if end_date else None
+    except ValueError:
+        return render_page(
+            "Ngày không hợp lệ",
+            "Hãy nhập ngày theo định dạng YYYY-MM-DD.",
+            "",
+            status_code=400,
+        )
+
+    if start and end and start > end:
+        return render_page(
+            "Khoảng ngày không hợp lệ",
+            "Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.",
+            "",
+            status_code=400,
+        )
 
     with connect_to_database() as connection:
         client = connection.execute(
@@ -522,9 +551,10 @@ def show_performance(client_code: str) -> HTMLResponse:
             JOIN public.ad_accounts AS a ON a.ad_account_id = g.ad_account_id
             JOIN public.clients AS c ON c.client_id = a.client_id
             WHERE c.client_code = %s
+              AND m.metric_date BETWEEN %s AND %s
             ORDER BY m.metric_date DESC, g.campaign_name
         """,
-            (client_code,),
+            (client_code, start or date.min, end or date.max),
         ).fetchall()
 
     impressions = sum(row[3] for row in records)
@@ -559,6 +589,15 @@ def show_performance(client_code: str) -> HTMLResponse:
         or '<tr><td class="empty" colspan="8">Chưa có số liệu theo ngày cho khách hàng này.</td></tr>'
     )
     content = client_tabs(client_code, "performance")
+    from_value = start.isoformat() if start else ""
+    to_value = end.isoformat() if end else ""
+    content += f"""<form class="filters" action="/performance" method="get">
+      <input type="hidden" name="client_code" value="{escape(client_code, quote=True)}">
+      <label>Từ ngày <input type="date" name="start_date" value="{from_value}"></label>
+      <label>Đến ngày <input type="date" name="end_date" value="{to_value}"></label>
+      <button class="action primary" type="submit">Lọc ngày</button>
+      <a class="action" href="/performance?client_code={quote_plus(client_code)}">Tất cả ngày</a>
+    </form>"""
     content += '<section class="stats" aria-label="Tổng quan hiệu quả">'
     content += stat("Tổng chi phí", spend, spend_note, "spend")
     content += stat(
