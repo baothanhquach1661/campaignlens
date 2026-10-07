@@ -2,8 +2,9 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
-from daily_metric import DailyMetric
 from pydantic import ValidationError
+
+from daily_metric import DailyMetric
 
 SAMPLE = {
     "campaign_id": 1,
