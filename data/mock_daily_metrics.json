@@ -1,0 +1,26 @@
+[
+  {
+    "campaign_id": 1,
+    "metric_date": "2026-10-04",
+    "impressions": 2000,
+    "clicks": 100,
+    "spend": "75.00",
+    "currency_code": "USD"
+  },
+  {
+    "campaign_id": 1,
+    "metric_date": "2026-10-05",
+    "impressions": 2100,
+    "clicks": 105,
+    "spend": "-5.00",
+    "currency_code": "USD"
+  },
+  {
+    "campaign_id": 1,
+    "metric_date": "2026-10-07",
+    "impressions": 2200,
+    "clicks": 110,
+    "spend": "82.50",
+    "currency_code": "USD"
+  }
+]
